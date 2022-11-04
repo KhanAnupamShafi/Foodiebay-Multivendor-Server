@@ -22,6 +22,7 @@ async function run() {
     await client.connect();
     console.log("MongoDB database connected");
     const sampleCollection = client.db("sample_guides").collection("planets");
+    const usersCollection = client.db('all_users').collection('users')
 
     app.get("/sample", async (req, res) => {
       const query = {};
@@ -29,7 +30,32 @@ async function run() {
       const sampleData = await cursor.toArray();
       res.send(sampleData);
     });
-  } finally {
+
+    // Put/Create .....(users)
+    app.put('/users/:email', async (req, res) => {
+      const email = req.params.email
+      const user = req.body
+      console.log('user information', user)
+      const filter = { email: email }
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc, options);
+      res.send(result)
+    })
+
+
+    // Get/Read (allUsers)....
+    app.get('/allUsers',async(req,res)=>{
+      const totalUsers=await usersCollection.find().toArray()
+      res.send(totalUsers)
+  })
+
+  
+  }
+
+  finally {
   }
 }
 
