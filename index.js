@@ -6,7 +6,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // STRIPE.......
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 //middleware
 app.use(cors());
@@ -25,9 +25,12 @@ async function run() {
     await client.connect();
     console.log("MongoDB database connected");
     const sampleCollection = client.db("sample_guides").collection("planets");
-    const usersCollection = client.db('all_users').collection('users')
-    const productsCollection = client.db('all_products').collection('products')
-    const paymentCollection =client.db('payment_db').collection('payments')
+    const usersCollection = client.db("all_users").collection("users");
+    const restaurantCollection = client
+      .db("restaurants_db")
+      .collection("restaurants");
+    const productsCollection = client.db("all_products").collection("products");
+    const paymentCollection = client.db("payment_db").collection("payments");
 
     app.get("/sample", async (req, res) => {
       const query = {};
@@ -37,63 +40,64 @@ async function run() {
     });
 
     // Get/Read all prtoducts..
-    app.get('/products', async (req, res) => {
-      const query = {}
-      const cursor = productsCollection.find(query)
-      const products = await cursor.toArray()
-      res.send(products)
-    })
+    app.get("/products", async (req, res) => {
+      const query = {};
+      const cursor = productsCollection.find(query);
+      const products = await cursor.toArray();
+      res.send(products);
+    });
 
     // Get/Read (single product) for payment....
-    app.get('/productForPayment/:paymentId', async (req, res) => {
-      const paymentId = req.params.paymentId
+    app.get("/productForPayment/:paymentId", async (req, res) => {
+      const paymentId = req.params.paymentId;
       // console.log(paymentId)
-      const query = { _id: ObjectId(paymentId) }
-      const product = await productsCollection.findOne(query)
-      res.send(product)
-
-    })
+      const query = { _id: ObjectId(paymentId) };
+      const product = await productsCollection.findOne(query);
+      res.send(product);
+    });
     // Put/Create .....(users)
-    app.put('/users/:email', async (req, res) => {
-      const email = req.params.email
-      const user = req.body
-      console.log('user information', user)
-      const filter = { email: email }
+    app.put("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      console.log("user information", user);
+      const filter = { email: email };
       const options = { upsert: true };
       const updateDoc = {
         $set: user,
       };
-      const result = await usersCollection.updateOne(filter, updateDoc, options);
-      res.send(result)
-    })
-
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
 
     // Get/Read (allUsers)....
-    app.get('/allUsers', async (req, res) => {
-      const totalUsers = await usersCollection.find().toArray()
-      res.send(totalUsers)
-    })
-
+    app.get("/allUsers", async (req, res) => {
+      const totalUsers = await usersCollection.find().toArray();
+      res.send(totalUsers);
+    });
 
     // payment method.....
-    app.post('/create-payment-intent', async (req, res) => {
+    app.post("/create-payment-intent", async (req, res) => {
       // const{price}=req.body
 
-      const product = req.body
-      const price = product.price
-      const amount = price * 100
+      const product = req.body;
+      const price = product.price;
+      const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
-        payment_method_types: ['card']
+        currency: "usd",
+        payment_method_types: ["card"],
       });
-      res.send({ clientSecret: paymentIntent.client_secret, })
-    })
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
 
     // PATCH for payment (transactionID ) store to (database)..
-    app.patch('/payment-transactionId/:id',async(req,res)=>{
-      const id=req.params.id
-      const payment=req.body;
+    app.patch("/payment-transactionId/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
       // const filter={_id:ObjectId(id)}
       // const options = { upsert: true };
       // const updateDoc = {
@@ -101,14 +105,60 @@ async function run() {
       //         transactionId:payment.transactionId
       //     }
       // };
-      const result=await paymentCollection.insertOne(payment);
-      res.send(result)
-  })
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
 
+    /* -------------------------------------------------------------------------- */
+    /*                                    Restaurant API Section Start                                    */
+    /* -------------------------------------------------------------------------- */
 
-  }
+    // Create New Restaurants
+    app.put("/restaurant/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const application = req.body;
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: application,
+      };
+      const result = await restaurantCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.json({ success: true, restaurant: result });
+    });
+    // Get Own Restaurants Info
+    app.get("/restaurant", async (req, res) => {
+      const restaurantId = req.query.restaurantId;
+      const query = { email: restaurantId };
+      const restaurant = await restaurantCollection.findOne(query);
+      res.json(restaurant);
+    });
 
-  finally {
+    // Request Re-Apply from vendor / Delete Vendor Status
+    app.delete("/restaurant", async (req, res) => {
+      const email = req.query.restaurantId;
+      console.log(email, "as");
+      const vendorAccount = await restaurantCollection.findOne({
+        email: email,
+      });
+      if (vendorAccount?.applicationStatus === "pending") {
+        const filter = { email: email };
+        const updateDoc = {
+          $unset: { applicationStatus: "pending" },
+        };
+        const result = await restaurantCollection.updateOne(filter, updateDoc);
+
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Forbidden 403" });
+      }
+    });
+
+    /* ------------------------- Restaurant API Section End ------------------------- */
+  } finally {
   }
 }
 
