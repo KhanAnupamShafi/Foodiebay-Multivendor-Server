@@ -158,6 +158,46 @@ async function run() {
     });
 
     /* ------------------------- Restaurant API Section End ------------------------- */
+
+
+
+    /*.................admin section start.......................*/
+
+
+    // Create .... (ADMIN)
+    app.put('/users/admin/:email', async (req, res) => {
+      const email = req.params.email
+      const filter = { email: email }
+      // const options = { upsert: true };
+      const updateDoc = {
+        $set: { role: 'admin' },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      // res.send(result)
+
+      res.send(result)
+    })
+
+    // for (useAdmin)....
+    app.get('/admin/:email', async (req, res) => {
+      const email = req.params.email
+      const user = await usersCollection.findOne({ email: email })
+      const isAdmin = user.role === 'admin'
+      res.send({ admin: isAdmin })
+    })
+
+
+    // Delete (user)
+    app.delete('/deleteUsers/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: ObjectId(id) }
+      const result = await usersCollection.deleteOne(query)
+      res.send(result)
+  })
+
+
+    /*.................admin section start.......................*/
+
   } finally {
   }
 }
