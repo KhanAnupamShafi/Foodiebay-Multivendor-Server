@@ -136,6 +136,20 @@ async function run() {
       const restaurant = await restaurantCollection.findOne(query);
       res.json(restaurant);
     });
+    // Get All Restaurants Info
+    app.get("/restaurants", async (req, res) => {
+      const query = { applicationStatus: "pending" };
+      const totalRestaurants = await restaurantCollection.find(query).toArray();
+
+      res.json(totalRestaurants);
+    });
+    // Get All approved Restaurants Info
+    app.get("/restaurants/vendor", async (req, res) => {
+      const query = { applicationStatus: "approved" };
+      const totalRestaurants = await restaurantCollection.find(query).toArray();
+
+      res.json(totalRestaurants);
+    });
 
     // Request Re-Apply from vendor / Delete Vendor Status
     app.delete("/restaurant", async (req, res) => {
@@ -159,45 +173,80 @@ async function run() {
 
     /* ------------------------- Restaurant API Section End ------------------------- */
 
-
-
-    /*.................admin section start.......................*/
-
+    /* -------------------------------------------------------------------------- */
+    /*                             Admin section start                            */
+    /* -------------------------------------------------------------------------- */
 
     // Create .... (ADMIN)
-    app.put('/users/admin/:email', async (req, res) => {
-      const email = req.params.email
-      const filter = { email: email }
+    app.put("/users/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
       // const options = { upsert: true };
       const updateDoc = {
-        $set: { role: 'admin' },
+        $set: { role: "admin" },
       };
       const result = await usersCollection.updateOne(filter, updateDoc);
       // res.send(result)
 
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     // for (useAdmin)....
-    app.get('/admin/:email', async (req, res) => {
-      const email = req.params.email
-      const user = await usersCollection.findOne({ email: email })
-      const isAdmin = user.role === 'admin'
-      res.send({ admin: isAdmin })
-    })
-
+    app.get("/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email: email });
+      const isAdmin = user?.role === "admin";
+      res.send({ admin: isAdmin });
+    });
 
     // Delete (user)
-    app.delete('/deleteUsers/:id', async (req, res) => {
-      const id = req.params.id
-      const query = { _id: ObjectId(id) }
-      const result = await usersCollection.deleteOne(query)
-      res.send(result)
-  })
+    app.delete("/deleteUsers/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
 
+    //Set vendor role//admin role entry update
+    app.patch("/restaurant/:email", async (req, res) => {
+      const email = req.params.email;
 
-    /*.................admin section start.......................*/
+      const userAccount = await restaurantCollection.findOne({
+        email: email,
+      });
+      if (userAccount) {
+        const filter = { email: email };
+        const updateDoc = {
+          $set: { role: "vendor", applicationStatus: "approved" },
+        };
+        const result = await restaurantCollection.updateOne(filter, updateDoc);
 
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Forbidden 403" });
+      }
+    });
+    //Remove vendor role//admin role entry update
+    app.delete("/restaurant/vendor/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const userAccount = await restaurantCollection.findOne({
+        email: email,
+      });
+      if (userAccount) {
+        const filter = { email: email };
+        const updateDoc = {
+          $unset: { role: "vendor", applicationStatus: "approved" },
+        };
+        const result = await restaurantCollection.updateOne(filter, updateDoc);
+
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Forbidden 403" });
+      }
+    });
+
+    /* ---------------------------- Admin section end --------------------------- */
   } finally {
   }
 }
