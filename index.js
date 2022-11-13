@@ -191,12 +191,20 @@ async function run() {
       res.send(result);
     });
 
-    // for (useAdmin)....
+    // for super admin(useAdmin)....
     app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email: email });
       const isAdmin = user?.role === "admin";
       res.send({ admin: isAdmin });
+    });
+
+    //for admins (vendor)
+    app.get("/vendor/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await restaurantCollection.findOne({ email: email });
+      const isAdmin = user.role === "vendor";
+      res.send({ vendorAdmin: isAdmin });
     });
 
     // Delete (user)
