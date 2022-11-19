@@ -46,6 +46,12 @@ async function run() {
       const products = await cursor.toArray();
       res.send(products);
     });
+    app.get("/products/:query", async (req, res) => {
+      const query = { name: req.params.query };
+      const products = await productsCollection.findOne(query);
+
+      res.send(products);
+    });
 
     // Get/Read (single product) for payment....
     app.get("/productForPayment/:paymentId", async (req, res) => {
@@ -199,7 +205,7 @@ async function run() {
       res.send({ admin: isAdmin });
     });
 
-    //for admins (vendor)
+    //for admins (useVendor)
     app.get("/vendor/:email", async (req, res) => {
       const email = req.params.email;
       const user = await restaurantCollection.findOne({ email: email });
@@ -215,17 +221,21 @@ async function run() {
       res.send(result);
     });
 
-    //Set vendor role//admin role entry update
+    // Approve vendor role//admin role entry update
     app.patch("/restaurant/:email", async (req, res) => {
       const email = req.params.email;
-
+      const restaurantId = req.body.restaurantId;
       const userAccount = await restaurantCollection.findOne({
         email: email,
       });
       if (userAccount) {
         const filter = { email: email };
         const updateDoc = {
-          $set: { role: "vendor", applicationStatus: "approved" },
+          $set: {
+            role: "vendor",
+            applicationStatus: "approved",
+            restaurant_id: restaurantId,
+          },
         };
         const result = await restaurantCollection.updateOne(filter, updateDoc);
 
