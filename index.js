@@ -29,6 +29,10 @@ async function run() {
     const restaurantCollection = client
       .db("restaurants_db")
       .collection("restaurants");
+    const mealCollection = client.db("restaurants_db").collection("meals");
+    const categoryCollection = client
+      .db("restaurants_db")
+      .collection("category");
     const productsCollection = client.db("all_products").collection("products");
     const paymentCollection = client.db("payment_db").collection("payments");
 
@@ -265,6 +269,42 @@ async function run() {
     });
 
     /* ---------------------------- Admin section end --------------------------- */
+
+    /* -------------------------------------------------------------------------- */
+    /*                      Vendor  Section Start                                */
+    /* -------------------------------------------------------------------------- */
+
+    // Vendor add menu items
+
+    app.post("/meal", async (req, res) => {
+      const data = req.body;
+      const result = await mealCollection.insertOne(data);
+      res.send({ success: true, meal: result });
+    });
+
+    // Vendor Add Category
+    app.post("/category", async (req, res) => {
+      const data = req.body;
+      const result = await categoryCollection.insertOne(data);
+      res.send({ success: true, category: result });
+    });
+
+    // Get/Read all Categories..
+    app.get("/category", async (req, res) => {
+      const query = {};
+      const cursor = categoryCollection.find(query);
+      const category = await cursor.toArray();
+      res.send(category);
+    });
+    // Get/Read all Food Items..
+    app.get("/meal", async (req, res) => {
+      const query = {};
+      const cursor = mealCollection.find(query);
+      const meal = await cursor.toArray();
+      res.send(meal);
+    });
+
+    /* --------------------------- Vendor Section End --------------------------- */
   } finally {
   }
 }
