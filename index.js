@@ -161,6 +161,14 @@ async function run() {
       res.json(totalRestaurants);
     });
 
+    // Get single partner vendors
+    app.get("/restaurants/vendor/:restaurantId", async (req, res) => {
+      const query = { restaurant_id: req.params.restaurantId };
+      const restaurant = await restaurantCollection.findOne(query);
+
+      res.send(restaurant);
+    });
+
     // Request Re-Apply from vendor / Delete Vendor Status
     app.delete("/restaurant", async (req, res) => {
       const email = req.query.restaurantId;
@@ -213,7 +221,7 @@ async function run() {
     app.get("/vendor/:email", async (req, res) => {
       const email = req.params.email;
       const user = await restaurantCollection.findOne({ email: email });
-      const isAdmin = user.role === "vendor";
+      const isAdmin = user?.role === "vendor";
       res.send({ vendorAdmin: isAdmin });
     });
 
