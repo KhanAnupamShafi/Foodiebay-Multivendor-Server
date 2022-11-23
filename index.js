@@ -313,6 +313,18 @@ async function run() {
     });
 
     /* --------------------------- Vendor Section End --------------------------- */
+
+
+    // Get/Read (all Menu)......
+    app.get('/menus',async (req,res)=>{
+      const item=req.query.item
+      const query={"category.label":item}
+      
+      const cursor = mealCollection.find(query)
+      const menus= await cursor.toArray()
+      res.send(menus)
+    })
+
   } finally {
   }
 }
