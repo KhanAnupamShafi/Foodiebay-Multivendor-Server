@@ -266,7 +266,8 @@ async function run() {
       if (userAccount) {
         const filter = { email: email };
         const updateDoc = {
-          $unset: { role: "vendor", applicationStatus: "approved" },
+          $unset: { role: "vendor" },
+          $set: { applicationStatus: "pending" },
         };
         const result = await restaurantCollection.updateOne(filter, updateDoc);
 
@@ -313,6 +314,29 @@ async function run() {
     });
 
     /* --------------------------- Vendor Section End --------------------------- */
+
+    /* -------------------------------------------------------------------------- */
+    /*                             Restaurant Section                             */
+    /* -------------------------------------------------------------------------- */
+
+    //get unique restaurant menu
+    app.get("/menu/:restaurant_id", async (req, res) => {
+      const id = req.params.restaurant_id;
+      const query = {
+        // restaurantInfo: { restaurant_id: "149q8u2YvG5js7vSqJQzI" },
+        "restaurantInfo.restaurant_id": id,
+      };
+      const cursor = mealCollection.find(query);
+      const restaurantMenu = await mealCollection.distinct(
+        "category.label",
+        query
+      );
+      const menuItems = await cursor.toArray();
+
+      res.send({ items: menuItems, menu: restaurantMenu });
+    });
+
+    /* ------------------------- Restaurant Section ends ------------------------ */
   } finally {
   }
 }
