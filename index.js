@@ -312,6 +312,13 @@ async function run() {
       const meal = await cursor.toArray();
       res.send(meal);
     });
+    // Get/Read all Food Items..
+    app.get("/meal/:meal_id", async (req, res) => {
+      const query = { _id: ObjectId(req.params.meal_id) };
+      const meal = await mealCollection.findOne(query);
+
+      res.send(meal);
+    });
 
     /* --------------------------- Vendor Section End --------------------------- */
 
