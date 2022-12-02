@@ -1,6 +1,7 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
+const { validateCartItems } = require("use-shopping-cart/utilities");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
@@ -34,6 +35,7 @@ async function run() {
       .db("restaurants_db")
       .collection("category");
     const productsCollection = client.db("all_products").collection("products");
+    const orderCollection = client.db("restaurants_db").collection("orders");
     const paymentCollection = client.db("payment_db").collection("payments");
 
     app.get("/sample", async (req, res) => {
@@ -343,6 +345,125 @@ async function run() {
       res.send({ items: menuItems, menu: restaurantMenu });
     });
 
+    //handle stripe checkout use shopping cart
+    app.post("/checkout-sessions", async (req, res) => {
+      try {
+        const cartItems = req.body;
+        const cursor = mealCollection.find({});
+        const meal = await cursor.toArray();
+        // console.log(meal);
+        const line_items = validateCartItems(meal, cartItems);
+
+        const origin =
+          process.env.NODE_ENV === "production"
+            ? req.headers.origin
+            : "http://localhost:3000";
+        // console.log(origin);
+        const params = {
+          submit_type: "pay",
+          payment_method_types: ["card"],
+          billing_address_collection: "auto",
+          shipping_address_collection: {
+            allowed_countries: ["US", "CA", "BD"],
+          },
+          line_items,
+          // success_url: "http://localhost:3000/?success=true",
+          // cancel_url: "http://localhost:3000/?canceled=true",
+          success_url: `${origin}/result?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: origin,
+          mode: "payment",
+        };
+        const checkoutSession = await stripe.checkout.sessions.create(params);
+        res.status(200).json({ checkoutSession, cart: line_items });
+      } catch (error) {
+        res.status(500).json({ statusCode: 500, message: error.message });
+      }
+    });
+    //get checkout data
+    app.get("/checkout-sessions/:sessionId", async (req, res) => {
+      const { sessionId } = req.params;
+      try {
+        if (!sessionId.startsWith("cs_")) {
+          throw Error("Incorrect session ID");
+        }
+        const checkout_session = await stripe.checkout.sessions.retrieve(
+          sessionId,
+          {
+            expand: ["payment_intent"],
+          }
+        );
+        res.status(200).json(checkout_session);
+      } catch (error) {
+        res.status(500).json({ statusCode: 500, message: error.message });
+      }
+    });
+    // Post successfull orders to db Note:: setOnInsert to avoid upsert cart items
+    app.put("/order", async (req, res) => {
+      const order = req.body;
+      const filter = { order_id: order.order_id };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          user: order.user,
+          email: order.email,
+          orderDate: order.orderDate,
+          amount_subtotal: order.amount_subtotal,
+          amount_total: order.amount_total,
+          created: order.created,
+          expires_at: order.expires_at,
+          customer_details: order.customer_details,
+          order_id: order.order_id,
+          payment_intent: order.payment_intent,
+          payment_status: order.payment_status,
+          restaurant_id: order.restaurant_id,
+        },
+        $setOnInsert: {
+          cartItems: order.cartItems,
+          totalPrice: order.totalPrice,
+        },
+      };
+
+      const result = await orderCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.json({ success: true, order: result });
+    });
+
+    //get user specific orders
+    app.get("/order", async (req, res) => {
+      const customer = req.query.email;
+
+      const query = { email: customer };
+      const orders = await orderCollection.find(query).toArray();
+      res.send(orders);
+    });
+
+    //get restaurant specific orders
+    app.get("/order/:restaurantId", async (req, res) => {
+      const restaurant = req.params.restaurantId;
+
+      const query = { restaurant_id: restaurant };
+      const orders = await orderCollection.find(query).toArray();
+      res.send(orders);
+    });
+
+    //update order
+
+    app.patch("/deliver/:id", async (req, res) => {
+      const order = req.params.id;
+
+      const filter = { order_id: order };
+      const updateDoc = {
+        $set: {
+          delivered: true,
+        },
+      };
+      const result = await orderCollection.updateOne(filter, updateDoc);
+
+      res.send(result);
+    });
     /* ------------------------- Restaurant Section ends ------------------------ */
   } finally {
   }
