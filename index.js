@@ -35,6 +35,7 @@ async function run() {
       .db("restaurants_db")
       .collection("category");
     const productsCollection = client.db("all_products").collection("products");
+    const tableCollection = client.db("restaurants_db").collection("tables");
     const orderCollection = client.db("restaurants_db").collection("orders");
     const paymentCollection = client.db("payment_db").collection("payments");
 
@@ -248,7 +249,7 @@ async function run() {
           $set: {
             role: "vendor",
             applicationStatus: "approved",
-            restaurant_id: restaurantId,
+            restaurant_id: userAccount?.restaurant_id || restaurantId,
           },
         };
         const result = await restaurantCollection.updateOne(filter, updateDoc);
@@ -259,12 +260,13 @@ async function run() {
       }
     });
     //Remove vendor role//admin role entry update
-    app.delete("/restaurant/vendor/:email", async (req, res) => {
+    app.delete("/vendor/:email", async (req, res) => {
       const email = req.params.email;
 
       const userAccount = await restaurantCollection.findOne({
         email: email,
       });
+      console.log(userAccount.restaurant_id);
       if (userAccount) {
         const filter = { email: email };
         const updateDoc = {
@@ -314,7 +316,7 @@ async function run() {
       const meal = await cursor.toArray();
       res.send(meal);
     });
-    // Get/Read all Food Items..
+    // Get/Read One Food Item.
     app.get("/meal/:meal_id", async (req, res) => {
       const query = { _id: ObjectId(req.params.meal_id) };
       const meal = await mealCollection.findOne(query);
@@ -464,6 +466,122 @@ async function run() {
 
       res.send(result);
     });
+
+    /* ------------------------------ New Table Add ----------------------------- */
+
+    app.post("/table-add/:email", async (req, res) => {
+      const email = req.params.email;
+      const table = req.body;
+      const userAccount = await restaurantCollection.findOne({
+        email: email,
+      });
+
+      if (userAccount) {
+        const filter = { email: email };
+        const updateDoc = {
+          $push: { tables: table },
+        };
+        const result = await restaurantCollection.updateOne(filter, updateDoc);
+
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Forbidden 403" });
+      }
+    });
+    // Get/Read all table for single restaurant owner..
+    app.get("/table/:id", async (req, res) => {
+      const vendor = { restaurant_id: req.params.id };
+
+      const tablesData = await restaurantCollection.findOne(vendor);
+
+      res.send(tablesData?.tables || []);
+    });
+
+    app.get("/tables/:id", async (req, res) => {
+      const vendorID = req.params.id;
+
+      const filter = {
+        restaurant_id: vendorID,
+      };
+      const tablesData = await restaurantCollection.findOne(filter, {
+        tables: { $eleMatch: { id: "i_s3-L-ultISEkycxw1mG" } },
+      });
+
+      res.send(tablesData);
+    });
+
+    //Successfull booking
+    app.post("/table/:id", async (req, res) => {
+      const vendor = req.params.id;
+      const data = req.body;
+      const tableId = req.body.id;
+
+      const filter = {
+        restaurant_id: vendor,
+        "tables.id": tableId,
+      };
+      const result = await restaurantCollection.updateOne(filter, {
+        $set: {
+          "tables.$.booked": true,
+          "tables.$.customer": data,
+        },
+      });
+      console.log(result);
+      res.send(result);
+    });
+
+    // Delete Table
+    app.delete("/table/:id", async (req, res) => {
+      const vendor = req.params.id;
+      // const data = req.body;
+      const tableId = req.body.id;
+      console.log(tableId);
+      const filter = {
+        restaurant_id: vendor,
+        "tables.id": tableId,
+      };
+      const result = await restaurantCollection.updateOne(
+        filter,
+        {
+          $pull: {
+            tables: {
+              id: tableId,
+            },
+          },
+        }
+        // $set: {
+        //   "tables.$.booked": false,
+        // },
+        // $unset: {
+        //   "tables.$.customer": "",
+        // },
+        // }
+      );
+      console.log(result);
+      res.send(result);
+    });
+    // Cancle booked Table
+    app.patch("/table/:id", async (req, res) => {
+      const vendor = req.params.id;
+      // const data = req.body;
+      const tableId = req.body.id;
+      console.log(tableId);
+      const filter = {
+        restaurant_id: vendor,
+        "tables.id": tableId,
+      };
+      const result = await restaurantCollection.updateOne(filter, {
+        $set: {
+          "tables.$.booked": false,
+        },
+        $unset: {
+          "tables.$.customer": "",
+        },
+      });
+      // console.log(result);
+      res.send(result);
+    });
+
     /* ------------------------- Restaurant Section ends ------------------------ */
   } finally {
   }
