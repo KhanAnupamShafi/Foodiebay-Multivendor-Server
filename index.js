@@ -583,6 +583,26 @@ async function run() {
     });
 
     /* ------------------------- Restaurant Section ends ------------------------ */
+
+    /*.......... DELETE (MENU) section Start.................*/
+        // Get specific (menu Items)
+        app.get("/menus/:email", async (req, res) => {
+          const email = req.params.email
+          const query = { "restaurantInfo.email": email }
+          const cursor = mealCollection.find(query);
+          const menus = await cursor.toArray();
+          res.send(menus)
+      });
+
+      // Delete (Menus)
+      app.delete("/deleteMenus/:id", async (req, res) => {
+          const id = req.params.id;
+          const query = { _id: ObjectId(id) };
+          const result = await mealCollection.deleteOne(query);
+          res.send(result);
+      });
+
+      /*.......... DELETE (MENU) section End.................*/
   } finally {
   }
 }
