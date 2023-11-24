@@ -1,13 +1,17 @@
-const express = require("express");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const cors = require("cors");
-const { validateCartItems } = require("use-shopping-cart/utilities");
-require("dotenv").config();
+const express = require('express');
+const {
+  MongoClient,
+  ServerApiVersion,
+  ObjectId,
+} = require('mongodb');
+const cors = require('cors');
+const { validateCartItems } = require('use-shopping-cart/utilities');
+require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// STRIPE.......
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// STRIPE Payment.......
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 //middleware
 app.use(cors());
@@ -24,22 +28,36 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-    console.log("MongoDB database connected");
-    const sampleCollection = client.db("sample_guides").collection("planets");
-    const usersCollection = client.db("all_users").collection("users");
+    console.log('MongoDB database connected');
+    const sampleCollection = client
+      .db('sample_guides')
+      .collection('planets');
+    const usersCollection = client
+      .db('all_users')
+      .collection('users');
     const restaurantCollection = client
-      .db("restaurants_db")
-      .collection("restaurants");
-    const mealCollection = client.db("restaurants_db").collection("meals");
+      .db('restaurants_db')
+      .collection('restaurants');
+    const mealCollection = client
+      .db('restaurants_db')
+      .collection('meals');
     const categoryCollection = client
-      .db("restaurants_db")
-      .collection("category");
-    const productsCollection = client.db("all_products").collection("products");
-    const tableCollection = client.db("restaurants_db").collection("tables");
-    const orderCollection = client.db("restaurants_db").collection("orders");
-    const paymentCollection = client.db("payment_db").collection("payments");
+      .db('restaurants_db')
+      .collection('category');
+    const productsCollection = client
+      .db('all_products')
+      .collection('products');
+    const tableCollection = client
+      .db('restaurants_db')
+      .collection('tables');
+    const orderCollection = client
+      .db('restaurants_db')
+      .collection('orders');
+    const paymentCollection = client
+      .db('payment_db')
+      .collection('payments');
 
-    app.get("/sample", async (req, res) => {
+    app.get('/sample', async (req, res) => {
       const query = {};
       const cursor = sampleCollection.find(query);
       const sampleData = await cursor.toArray();
@@ -47,13 +65,13 @@ async function run() {
     });
 
     // Get/Read all prtoducts..
-    app.get("/products", async (req, res) => {
+    app.get('/products', async (req, res) => {
       const query = {};
       const cursor = productsCollection.find(query);
       const products = await cursor.toArray();
       res.send(products);
     });
-    app.get("/products/:query", async (req, res) => {
+    app.get('/products/:query', async (req, res) => {
       const query = { name: req.params.query };
       const products = await productsCollection.findOne(query);
 
@@ -61,7 +79,7 @@ async function run() {
     });
 
     // Get/Read (single product) for payment....
-    app.get("/productForPayment/:paymentId", async (req, res) => {
+    app.get('/productForPayment/:paymentId', async (req, res) => {
       const paymentId = req.params.paymentId;
       // console.log(paymentId)
       const query = { _id: ObjectId(paymentId) };
@@ -69,10 +87,10 @@ async function run() {
       res.send(product);
     });
     // Put/Create .....(users)
-    app.put("/users/:email", async (req, res) => {
+    app.put('/users/:email', async (req, res) => {
       const email = req.params.email;
       const user = req.body;
-      console.log("user information", user);
+      console.log('user information', user);
       const filter = { email: email };
       const options = { upsert: true };
       const updateDoc = {
@@ -87,13 +105,13 @@ async function run() {
     });
 
     // Get/Read (allUsers)....
-    app.get("/allUsers", async (req, res) => {
+    app.get('/allUsers', async (req, res) => {
       const totalUsers = await usersCollection.find().toArray();
       res.send(totalUsers);
     });
 
     // payment method.....
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post('/create-payment-intent', async (req, res) => {
       // const{price}=req.body
 
       const product = req.body;
@@ -101,14 +119,14 @@ async function run() {
       const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
+        currency: 'usd',
+        payment_method_types: ['card'],
       });
       res.send({ clientSecret: paymentIntent.client_secret });
     });
 
     // PATCH for payment (transactionID ) store to (database)..
-    app.patch("/payment-transactionId/:id", async (req, res) => {
+    app.patch('/payment-transactionId/:id', async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
       // const filter={_id:ObjectId(id)}
@@ -127,7 +145,7 @@ async function run() {
     /* -------------------------------------------------------------------------- */
 
     // Create New Restaurants
-    app.put("/restaurant/:email", async (req, res) => {
+    app.put('/restaurant/:email', async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const application = req.body;
@@ -143,29 +161,33 @@ async function run() {
       res.json({ success: true, restaurant: result });
     });
     // Get Own Restaurants Info
-    app.get("/restaurant", async (req, res) => {
+    app.get('/restaurant', async (req, res) => {
       const restaurantId = req.query.restaurantId;
       const query = { email: restaurantId };
       const restaurant = await restaurantCollection.findOne(query);
       res.json(restaurant);
     });
     // Get All Restaurants Info
-    app.get("/restaurants", async (req, res) => {
-      const query = { applicationStatus: "pending" };
-      const totalRestaurants = await restaurantCollection.find(query).toArray();
+    app.get('/restaurants', async (req, res) => {
+      const query = { applicationStatus: 'pending' };
+      const totalRestaurants = await restaurantCollection
+        .find(query)
+        .toArray();
 
       res.json(totalRestaurants);
     });
     // Get All approved Restaurants Info
-    app.get("/restaurants/vendor", async (req, res) => {
-      const query = { applicationStatus: "approved" };
-      const totalRestaurants = await restaurantCollection.find(query).toArray();
+    app.get('/restaurants/vendor', async (req, res) => {
+      const query = { applicationStatus: 'approved' };
+      const totalRestaurants = await restaurantCollection
+        .find(query)
+        .toArray();
 
       res.json(totalRestaurants);
     });
 
     // Get single partner vendors
-    app.get("/restaurants/vendor/:restaurantId", async (req, res) => {
+    app.get('/restaurants/vendor/:restaurantId', async (req, res) => {
       const query = { restaurant_id: req.params.restaurantId };
       const restaurant = await restaurantCollection.findOne(query);
 
@@ -173,22 +195,25 @@ async function run() {
     });
 
     // Request Re-Apply from vendor / Delete Vendor Status
-    app.delete("/restaurant", async (req, res) => {
+    app.delete('/restaurant', async (req, res) => {
       const email = req.query.restaurantId;
-      console.log(email, "as");
+      console.log(email, 'as');
       const vendorAccount = await restaurantCollection.findOne({
         email: email,
       });
-      if (vendorAccount?.applicationStatus === "pending") {
+      if (vendorAccount?.applicationStatus === 'pending') {
         const filter = { email: email };
         const updateDoc = {
-          $unset: { applicationStatus: "pending" },
+          $unset: { applicationStatus: 'pending' },
         };
-        const result = await restaurantCollection.updateOne(filter, updateDoc);
+        const result = await restaurantCollection.updateOne(
+          filter,
+          updateDoc
+        );
 
         res.send(result);
       } else {
-        res.status(403).send({ message: "Forbidden 403" });
+        res.status(403).send({ message: 'Forbidden 403' });
       }
     });
 
@@ -199,37 +224,42 @@ async function run() {
     /* -------------------------------------------------------------------------- */
 
     // Create .... (ADMIN)
-    app.put("/users/admin/:email", async (req, res) => {
+    app.put('/users/admin/:email', async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       // const options = { upsert: true };
       const updateDoc = {
-        $set: { role: "admin" },
+        $set: { role: 'admin' },
       };
-      const result = await usersCollection.updateOne(filter, updateDoc);
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc
+      );
       // res.send(result)
 
       res.send(result);
     });
 
     // for super admin(useAdmin)....
-    app.get("/admin/:email", async (req, res) => {
+    app.get('/admin/:email', async (req, res) => {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email: email });
-      const isAdmin = user?.role === "admin";
+      const isAdmin = user?.role === 'admin';
       res.send({ admin: isAdmin });
     });
 
     //for admins (useVendor)
-    app.get("/vendor/:email", async (req, res) => {
+    app.get('/vendor/:email', async (req, res) => {
       const email = req.params.email;
-      const user = await restaurantCollection.findOne({ email: email });
-      const isAdmin = user?.role === "vendor";
+      const user = await restaurantCollection.findOne({
+        email: email,
+      });
+      const isAdmin = user?.role === 'vendor';
       res.send({ vendorAdmin: isAdmin });
     });
 
     // Delete (user)
-    app.delete("/deleteUsers/:id", async (req, res) => {
+    app.delete('/deleteUsers/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
@@ -237,7 +267,7 @@ async function run() {
     });
 
     // Approve vendor role//admin role entry update
-    app.patch("/restaurant/:email", async (req, res) => {
+    app.patch('/restaurant/:email', async (req, res) => {
       const email = req.params.email;
       const restaurantId = req.body.restaurantId;
       const userAccount = await restaurantCollection.findOne({
@@ -247,20 +277,23 @@ async function run() {
         const filter = { email: email };
         const updateDoc = {
           $set: {
-            role: "vendor",
-            applicationStatus: "approved",
+            role: 'vendor',
+            applicationStatus: 'approved',
             restaurant_id: userAccount?.restaurant_id || restaurantId,
           },
         };
-        const result = await restaurantCollection.updateOne(filter, updateDoc);
+        const result = await restaurantCollection.updateOne(
+          filter,
+          updateDoc
+        );
 
         res.send(result);
       } else {
-        res.status(403).send({ message: "Forbidden 403" });
+        res.status(403).send({ message: 'Forbidden 403' });
       }
     });
     //Remove vendor role//admin role entry update
-    app.delete("/vendor/:email", async (req, res) => {
+    app.delete('/vendor/:email', async (req, res) => {
       const email = req.params.email;
 
       const userAccount = await restaurantCollection.findOne({
@@ -270,14 +303,17 @@ async function run() {
       if (userAccount) {
         const filter = { email: email };
         const updateDoc = {
-          $unset: { role: "vendor" },
-          $set: { applicationStatus: "pending" },
+          $unset: { role: 'vendor' },
+          $set: { applicationStatus: 'pending' },
         };
-        const result = await restaurantCollection.updateOne(filter, updateDoc);
+        const result = await restaurantCollection.updateOne(
+          filter,
+          updateDoc
+        );
 
         res.send(result);
       } else {
-        res.status(403).send({ message: "Forbidden 403" });
+        res.status(403).send({ message: 'Forbidden 403' });
       }
     });
 
@@ -289,35 +325,35 @@ async function run() {
 
     // Vendor add menu items
 
-    app.post("/meal", async (req, res) => {
+    app.post('/meal', async (req, res) => {
       const data = req.body;
       const result = await mealCollection.insertOne(data);
       res.send({ success: true, meal: result });
     });
 
     // Vendor Add Category
-    app.post("/category", async (req, res) => {
+    app.post('/category', async (req, res) => {
       const data = req.body;
       const result = await categoryCollection.insertOne(data);
       res.send({ success: true, category: result });
     });
 
     // Get/Read all Categories..
-    app.get("/category", async (req, res) => {
+    app.get('/category', async (req, res) => {
       const query = {};
       const cursor = categoryCollection.find(query);
       const category = await cursor.toArray();
       res.send(category);
     });
     // Get/Read all Food Items..
-    app.get("/meal", async (req, res) => {
+    app.get('/meal', async (req, res) => {
       const query = {};
       const cursor = mealCollection.find(query);
       const meal = await cursor.toArray();
       res.send(meal);
     });
     // Get/Read One Food Item.
-    app.get("/meal/:meal_id", async (req, res) => {
+    app.get('/meal/:meal_id', async (req, res) => {
       const query = { _id: ObjectId(req.params.meal_id) };
       const meal = await mealCollection.findOne(query);
 
@@ -331,15 +367,15 @@ async function run() {
     /* -------------------------------------------------------------------------- */
 
     //get unique restaurant menu
-    app.get("/menu/:restaurant_id", async (req, res) => {
+    app.get('/menu/:restaurant_id', async (req, res) => {
       const id = req.params.restaurant_id;
       const query = {
         // restaurantInfo: { restaurant_id: "149q8u2YvG5js7vSqJQzI" },
-        "restaurantInfo.restaurant_id": id,
+        'restaurantInfo.restaurant_id': id,
       };
       const cursor = mealCollection.find(query);
       const restaurantMenu = await mealCollection.distinct(
-        "category.label",
+        'category.label',
         query
       );
       const menuItems = await cursor.toArray();
@@ -348,7 +384,7 @@ async function run() {
     });
 
     //handle stripe checkout use shopping cart
-    app.post("/checkout-sessions", async (req, res) => {
+    app.post('/checkout-sessions', async (req, res) => {
       try {
         const cartItems = req.body;
         const cursor = mealCollection.find({});
@@ -357,50 +393,54 @@ async function run() {
         const line_items = validateCartItems(meal, cartItems);
 
         const origin =
-          process.env.NODE_ENV === "production"
+          process.env.NODE_ENV === 'production'
             ? req.headers.origin
-            : "http://localhost:3000";
+            : 'http://localhost:3000';
         // console.log(origin);
         const params = {
-          submit_type: "pay",
-          payment_method_types: ["card"],
-          billing_address_collection: "auto",
+          submit_type: 'pay',
+          payment_method_types: ['card'],
+          billing_address_collection: 'auto',
           shipping_address_collection: {
-            allowed_countries: ["US", "CA", "BD"],
+            allowed_countries: ['US', 'CA', 'BD'],
           },
           line_items,
           // success_url: "http://localhost:3000/?success=true",
           // cancel_url: "http://localhost:3000/?canceled=true",
           success_url: `${origin}/result?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: origin,
-          mode: "payment",
+          mode: 'payment',
         };
-        const checkoutSession = await stripe.checkout.sessions.create(params);
+        const checkoutSession = await stripe.checkout.sessions.create(
+          params
+        );
         res.status(200).json({ checkoutSession, cart: line_items });
       } catch (error) {
-        res.status(500).json({ statusCode: 500, message: error.message });
+        res
+          .status(500)
+          .json({ statusCode: 500, message: error.message });
       }
     });
     //get checkout data
-    app.get("/checkout-sessions/:sessionId", async (req, res) => {
+    app.get('/checkout-sessions/:sessionId', async (req, res) => {
       const { sessionId } = req.params;
       try {
-        if (!sessionId.startsWith("cs_")) {
-          throw Error("Incorrect session ID");
+        if (!sessionId.startsWith('cs_')) {
+          throw Error('Incorrect session ID');
         }
-        const checkout_session = await stripe.checkout.sessions.retrieve(
-          sessionId,
-          {
-            expand: ["payment_intent"],
-          }
-        );
+        const checkout_session =
+          await stripe.checkout.sessions.retrieve(sessionId, {
+            expand: ['payment_intent'],
+          });
         res.status(200).json(checkout_session);
       } catch (error) {
-        res.status(500).json({ statusCode: 500, message: error.message });
+        res
+          .status(500)
+          .json({ statusCode: 500, message: error.message });
       }
     });
     // Post successfull orders to db Note:: setOnInsert to avoid upsert cart items
-    app.put("/order", async (req, res) => {
+    app.put('/order', async (req, res) => {
       const order = req.body;
       const filter = { order_id: order.order_id };
       const options = { upsert: true };
@@ -434,7 +474,7 @@ async function run() {
     });
 
     //get user specific orders
-    app.get("/order", async (req, res) => {
+    app.get('/order', async (req, res) => {
       const customer = req.query.email;
 
       const query = { email: customer };
@@ -443,7 +483,7 @@ async function run() {
     });
 
     //get restaurant specific orders
-    app.get("/order/:restaurantId", async (req, res) => {
+    app.get('/order/:restaurantId', async (req, res) => {
       const restaurant = req.params.restaurantId;
 
       const query = { restaurant_id: restaurant };
@@ -453,7 +493,7 @@ async function run() {
 
     //update order
 
-    app.patch("/deliver/:id", async (req, res) => {
+    app.patch('/deliver/:id', async (req, res) => {
       const order = req.params.id;
 
       const filter = { order_id: order };
@@ -462,14 +502,17 @@ async function run() {
           delivered: true,
         },
       };
-      const result = await orderCollection.updateOne(filter, updateDoc);
+      const result = await orderCollection.updateOne(
+        filter,
+        updateDoc
+      );
 
       res.send(result);
     });
 
     /* ------------------------------ New Table Add ----------------------------- */
 
-    app.post("/table-add/:email", async (req, res) => {
+    app.post('/table-add/:email', async (req, res) => {
       const email = req.params.email;
       const table = req.body;
       const userAccount = await restaurantCollection.findOne({
@@ -481,15 +524,18 @@ async function run() {
         const updateDoc = {
           $push: { tables: table },
         };
-        const result = await restaurantCollection.updateOne(filter, updateDoc);
+        const result = await restaurantCollection.updateOne(
+          filter,
+          updateDoc
+        );
 
         res.send(result);
       } else {
-        res.status(403).send({ message: "Forbidden 403" });
+        res.status(403).send({ message: 'Forbidden 403' });
       }
     });
     // Get/Read all table for single restaurant owner..
-    app.get("/table/:id", async (req, res) => {
+    app.get('/table/:id', async (req, res) => {
       const vendor = { restaurant_id: req.params.id };
 
       const tablesData = await restaurantCollection.findOne(vendor);
@@ -497,33 +543,33 @@ async function run() {
       res.send(tablesData?.tables || []);
     });
 
-    app.get("/tables/:id", async (req, res) => {
+    app.get('/tables/:id', async (req, res) => {
       const vendorID = req.params.id;
 
       const filter = {
         restaurant_id: vendorID,
       };
       const tablesData = await restaurantCollection.findOne(filter, {
-        tables: { $eleMatch: { id: "i_s3-L-ultISEkycxw1mG" } },
+        tables: { $eleMatch: { id: 'i_s3-L-ultISEkycxw1mG' } },
       });
 
       res.send(tablesData);
     });
 
     //Successfull booking
-    app.post("/table/:id", async (req, res) => {
+    app.post('/table/:id', async (req, res) => {
       const vendor = req.params.id;
       const data = req.body;
       const tableId = req.body.id;
 
       const filter = {
         restaurant_id: vendor,
-        "tables.id": tableId,
+        'tables.id': tableId,
       };
       const result = await restaurantCollection.updateOne(filter, {
         $set: {
-          "tables.$.booked": true,
-          "tables.$.customer": data,
+          'tables.$.booked': true,
+          'tables.$.customer': data,
         },
       });
       console.log(result);
@@ -531,14 +577,14 @@ async function run() {
     });
 
     // Delete Table
-    app.delete("/table/:id", async (req, res) => {
+    app.delete('/table/:id', async (req, res) => {
       const vendor = req.params.id;
       // const data = req.body;
       const tableId = req.body.id;
       console.log(tableId);
       const filter = {
         restaurant_id: vendor,
-        "tables.id": tableId,
+        'tables.id': tableId,
       };
       const result = await restaurantCollection.updateOne(
         filter,
@@ -561,21 +607,21 @@ async function run() {
       res.send(result);
     });
     // Cancle booked Table
-    app.patch("/table/:id", async (req, res) => {
+    app.patch('/table/:id', async (req, res) => {
       const vendor = req.params.id;
       // const data = req.body;
       const tableId = req.body.id;
       console.log(tableId);
       const filter = {
         restaurant_id: vendor,
-        "tables.id": tableId,
+        'tables.id': tableId,
       };
       const result = await restaurantCollection.updateOne(filter, {
         $set: {
-          "tables.$.booked": false,
+          'tables.$.booked': false,
         },
         $unset: {
-          "tables.$.customer": "",
+          'tables.$.customer': '',
         },
       });
       // console.log(result);
@@ -585,32 +631,32 @@ async function run() {
     /* ------------------------- Restaurant Section ends ------------------------ */
 
     /*.......... DELETE (MENU) section Start.................*/
-        // Get specific (menu Items)
-        app.get("/menus/:email", async (req, res) => {
-          const email = req.params.email
-          const query = { "restaurantInfo.email": email }
-          const cursor = mealCollection.find(query);
-          const menus = await cursor.toArray();
-          res.send(menus)
-      });
+    // Get specific (menu Items)
+    app.get('/menus/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { 'restaurantInfo.email': email };
+      const cursor = mealCollection.find(query);
+      const menus = await cursor.toArray();
+      res.send(menus);
+    });
 
-      // Delete (Menus)
-      app.delete("/deleteMenus/:id", async (req, res) => {
-          const id = req.params.id;
-          const query = { _id: ObjectId(id) };
-          const result = await mealCollection.deleteOne(query);
-          res.send(result);
-      });
+    // Delete (Menus)
+    app.delete('/deleteMenus/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await mealCollection.deleteOne(query);
+      res.send(result);
+    });
 
-      /*.......... DELETE (MENU) section End.................*/
+    /*.......... DELETE (MENU) section End.................*/
   } finally {
   }
 }
 
 run().catch(console.dir);
 
-app.get("/", (req, res) => {
-  res.send("Welcome to Foodiebay Server");
+app.get('/', (req, res) => {
+  res.send('Welcome to Foodiebay Server');
 });
 
 app.listen(port, () => {
